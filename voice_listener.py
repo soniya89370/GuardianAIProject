@@ -3,102 +3,117 @@
 # import soundfile as sf
 # import os
 
-# # -----------------------------
-# # Secret Code
-# # -----------------------------
+# model = whisper.load_model("base")
+
 # SECRET_CODE = "help me"
 
-# # -----------------------------
-# # Load Whisper Model
-# # -----------------------------
-# print("Loading Whisper Model...")
-# model = whisper.load_model("base")
-# print("Whisper Loaded Successfully!")
+# def listen_secret_code():
 
-# # -----------------------------
-# # Record Audio
-# # -----------------------------
-# duration = 5          # seconds
-# samplerate = 16000
+#     duration = 5
+#     samplerate = 16000
 
-# print("\n🎤 Speak your secret code now...")
+#     print("🎤 Speak your secret code...")
 
-# audio = sd.rec(
-#     int(duration * samplerate),
-#     samplerate=samplerate,
-#     channels=1,
-#     dtype="float32"
-# )
+#     audio = sd.rec(
+#         int(duration * samplerate),
+#         samplerate=samplerate,
+#         channels=1,
+#         dtype="float32"
+#     )
 
-# sd.wait()
+#     sd.wait()
 
-# audio_file = "secret.wav"
-# sf.write(audio_file, audio, samplerate)
+#     audio_file = "secret.wav"
+#     sf.write(audio_file, audio, samplerate)
 
-# print("Audio Recorded Successfully!")
+#     try:
+#         result = model.transcribe(audio_file)
+#         text = result["text"].strip().lower()
 
-# # -----------------------------
-# # Convert Speech to Text
-# # -----------------------------
-# try:
-#     result = model.transcribe(audio_file)
+#         print("You Said:", text)
 
-#     text = result["text"].strip().lower()
+#         if SECRET_CODE in text:
+#             print("🚨 EMERGENCY ACTIVATED 🚨")
+#             return True
+#         else:
+#             return False
 
-#     print("\nYou Said :", text)
+#     except Exception as e:
+#         print(e)
+#         return False
 
-#     if SECRET_CODE.lower() in text:
-#         print("\n🚨 EMERGENCY ACTIVATED 🚨")
-#         print("Secret Code Matched!")
-
-#         # Yahan future me SMS / Email / SOS function call kar sakte ho
-
-#     else:
-#         print("\n❌ Secret Code Not Detected")
-
-# except Exception as e:
-#     print("\nError :", e)
-
-# # -----------------------------
-# # Delete Audio File
-# # -----------------------------
-# if os.path.exists(audio_file):
-#     os.remove(audio_file)
+#     finally:
+#         if os.path.exists(audio_file):
+#             os.remove(audio_file)
 
 
-import whisper
-import sounddevice as sd
-import soundfile as sf
 import os
 
-model = whisper.load_model("base")
+try:
+    import whisper
+    model = whisper.load_model("base")
+except Exception as e:
+    model = None
+    print("Whisper loading error:", e)
+
+
+try:
+    import sounddevice as sd
+    import soundfile as sf
+    AUDIO_AVAILABLE = True
+except Exception as e:
+    sd = None
+    sf = None
+    AUDIO_AVAILABLE = False
+    print("Audio unavailable:", e)
+
 
 SECRET_CODE = "help me"
 
+
 def listen_secret_code():
+
+    # Render/cloud server does not support microphone
+    if not AUDIO_AVAILABLE:
+        print("⚠️ Voice input is not available on server")
+        return False
+
 
     duration = 5
     samplerate = 16000
 
-    print("🎤 Speak your secret code...")
-
-    audio = sd.rec(
-        int(duration * samplerate),
-        samplerate=samplerate,
-        channels=1,
-        dtype="float32"
-    )
-
-    sd.wait()
-
     audio_file = "secret.wav"
-    sf.write(audio_file, audio, samplerate)
 
     try:
+        print("🎤 Speak your secret code...")
+
+        audio = sd.rec(
+            int(duration * samplerate),
+            samplerate=samplerate,
+            channels=1,
+            dtype="float32"
+        )
+
+        sd.wait()
+
+        sf.write(
+            audio_file,
+            audio,
+            samplerate
+        )
+
+
+        if model is None:
+            print("Whisper model not loaded")
+            return False
+
+
         result = model.transcribe(audio_file)
+
         text = result["text"].strip().lower()
 
         print("You Said:", text)
+
 
         if SECRET_CODE in text:
             print("🚨 EMERGENCY ACTIVATED 🚨")
@@ -106,9 +121,11 @@ def listen_secret_code():
         else:
             return False
 
+
     except Exception as e:
-        print(e)
+        print("Voice error:", e)
         return False
+
 
     finally:
         if os.path.exists(audio_file):
